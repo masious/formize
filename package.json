@@ -1,0 +1,22 @@
+{
+  "name": "formize",
+  "version": "1.0.0",
+  "description": "Form generator for Sequelize",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "form",
+    "generate",
+    "generator",
+    "sequelize"
+  ],
+  "author": "Masoud Bonabi <masoudbonabi@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^0.19.0",
+    "express": "^4.13.3",
+    "sequelize": "^3.14.1"
+  }
+}
