@@ -22,9 +22,9 @@ formize.prototype.STRING 		= JSON.stringify(Sequelize.STRING());
 
 
 formize.prototype.labelEl = function(name, field) {
-	var $label = cheerio.load('<label/>');
-	$label.attr('for', name + '_' + field);
-	$label.text('field');
+	var $label = cheerio.load('<label/>')('label')
+	.attr('for', name + '_' + field)
+	.text(field);
 	return $label;
 }
 
@@ -32,34 +32,35 @@ formize.prototype.stringEl = function(name, field, data) {
 	if(data === undefined)
 		data = '';
 
-	var $input = cheerio.load('<input/>')
+	var $input = cheerio.load('<input/>')('input')
 	.attr('type', 'text')
 	.addClass('form-control')
-	.id(name + '_' + field)
+	.attr('id', name + '_' + field)
 	.attr('name', field)
 	.val(data);
 
-	var $div = cheerio.load('<div/>')
-	.addClas('form-group')
-	.append(this.label(name, field))
+	var $div = cheerio.load('<div/>')('div')
+	.addClass('form-group')
+	.append(this.labelEl(name, field))
 	.append($input);
 
 	return $div;
 }
 
 formize.prototype.textareaEl = function(name, field, data) {
-	if(data === undefined)
+	if(typeof data === 'undefined'){
 		data = '';
+	}
 	
-	var $textarea = cheerio.load('<textarea/>')
+	var $textarea = cheerio.load('<textarea/>')('textarea')
 	.addClass('form-control')
-	.id(name + '_' + field)
+	.attr('id', name + '_' + field)
 	.attr('name', field)
-	.html(data);
+	.html(data.toString());
 
-	var $div = cheerio.load('<div/>')
-	.addClas('form-group')
-	.append(this.label(name, field))
+	var $div = cheerio.load('<div/>')('div')
+	.addClass('form-group')
+	.append(this.labelEl(name, field))
 	.append($textarea);
 
 	return $div;
@@ -69,16 +70,16 @@ formize.prototype.numberEl = function(name, field, data) {
 	if(data === undefined)
 		data = '';
 	
-	var $input = cheerio.load('<input/>')
+	var $input = cheerio.load('<input/>')('input')
 	.attr('type', 'number')
 	.addClass('form-control')
-	.id(name + '_' + field)
+	.attr('id', name + '_' + field)
 	.attr('name', field)
 	.val(data);
 
-	var $div = cheerio.load('<div/>')
-	.addClas('form-group')
-	.append(this.label(name, field))
+	var $div = cheerio.load('<div/>')('div')
+	.addClass('form-group')
+	.append(this.labelEl(name, field))
 	.append($input);
 
 	return $div;
@@ -86,19 +87,22 @@ formize.prototype.numberEl = function(name, field, data) {
 
 
 formize.prototype.submitButtonEl = function(){
-	var $btn = cheerio.load('<button/>')
+	var $btn = cheerio.load('<input/>')('input')
 	.attr('type', 'submit')
-	.val('Save')
 	.addClass('btn')
-	.addClass(btn-primary);
+	.addClass('btn-primary')
+	.val('Save');
+	
+	return $btn;
 }
 
 formize.prototype.formEl = function(method, action) {
-	var $form = cheerio.load('<form/>')
-	.attr('method', method)
-	.attr('action', action)
+	var $formHolder = cheerio.load('<form/>');
 
-	return $form;
+	$formHolder('form').attr('method', method)
+	.attr('action', action);
+
+	return $formHolder;
 }
 
 formize.prototype.save = function(obj){
@@ -136,7 +140,8 @@ formize.prototype.generate = function() {
 formize.prototype.generateFor = function(instance) {
 	var fields = this.fields;
 
-	var $form = this.formEl('post', this.endpoint + '/edit/' + instance.id);
+	var $formHolder = this.formEl('post', this.endpoint + '/edit/' + instance.id);
+	var $form = $formHolder('form');
 	
 	for(var i in fields) {
 		field = fields[i];
@@ -145,20 +150,20 @@ formize.prototype.generateFor = function(instance) {
 
 		switch(JSON.stringify(this[field].type)) {
 			case (this.INTEGER):
-			this[field].dom = this.numberEl(this.name, field);
+			this[field].dom = this.numberEl(this.name, field, instance[field]);
 			break;
 			case (this.TEXT):
-			this[field].dom = this.textareaEl(this.name, field);
+			this[field].dom = this.textareaEl(this.name, field, instance[field]);
 			break;
 			default:
-			this[field].dom = this.stringEl(this.name, field);
+			this[field].dom = this.stringEl(this.name, field, instance[field]);
 			break;
 		}
 		$form.append(this[field].dom);
 	}
 	$form.append(this.submitButtonEl());
 	
-	return $form;
+	return $formHolder;
 }
 
 module.exports = formize;
