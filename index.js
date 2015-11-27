@@ -138,8 +138,11 @@ formize.prototype.generate = function() {
 			case ('INTEGER'):
 			this[field].dom = this.numberEl(this.name, field);
 			break;
-			case (this.TEXT):
+			case ('TEXT'):
 			this[field].dom = this.textareaEl(this.name, field);
+			break;
+			case ('DATE'):
+			this[field].dom = this.DateEl(this.name, field);
 			break;
 			default:
 			this[field].dom = this.stringEl(this.name, field);
