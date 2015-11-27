@@ -1,7 +1,5 @@
-var express = require('express');
 var Sequelize = require('sequelize');
 var cheerio = require('cheerio');
-var router = express.Router();
 
 var formize = function(model) {
 
@@ -16,88 +14,76 @@ var formize = function(model) {
 	this.fields = this.fields || this.allFields;
 };
 
+var Field = function(seqField, val){
+	var seqField = seqField;
+	var model = seqField.Model;
 
-formize.prototype.labelEl = function(name, field) {
-	var $label = cheerio.load('<label/>')('label')
-	.attr('for', name + '_' + field)
-	.text(field);
-	return $label;
+	var id = seqField.Model.name + '_' + seqField.field;
+	var name = seqField.field;
+	
+	if(typeof val === 'undefined')
+		val = '';
+
+	var labelEl = function() {
+		var $label = cheerio.load('<label/>')('label')
+		.attr('for', id)
+		.text(seqField.field);
+		return $label;
+	}
+
+	var inputEl = function(){
+		switch(seqField.type.key) {
+			case ('INTEGER'):
+				return numberField(id, name, val);
+				break;
+			case ('TEXT'):
+				return textareaField(id, name, val);
+				break;
+			case ('DATE'):
+				return dateField(id, name, val);
+				break;
+			default:
+				return stringField(id, name, val);
+				break;
+		}
+	}
+
+	var wrapperEl = function(){
+
+		return cheerio.load('<div/>')('div')
+		.addClass('form-group')
+		.append(labelEl())
+		.append(inputEl());
+		
+	}
+	return wrapperEl();
 }
 
-formize.prototype.stringEl = function(name, field, data) {
-	if(data === undefined)
-		data = '';
+var numberField = function(id, name, data){
+	return stringField(id, name, data)
+	.attr('type', 'number');
+}
 
-	var $input = cheerio.load('<input/>')('input')
+var dateField = function(id, name, data){
+	return stringField(id, name, data)
+	.attr('type', 'datetime-local');
+}
+
+var textareaField = function(id, name, data){
+	return cheerio.load('<textarea/>')('textarea')
+	.addClass('form-control')
+	.attr('id', id)
+	.attr('name', name)
+	.val(data);
+}
+
+var stringField = function(id, name, data){
+	return cheerio.load('<input/>')('input')
 	.attr('type', 'text')
 	.addClass('form-control')
-	.attr('id', name + '_' + field)
-	.attr('name', field)
+	.attr('id', id)
+	.attr('name', name)
 	.val(data);
-
-	var $div = cheerio.load('<div/>')('div')
-	.addClass('form-group')
-	.append(this.labelEl(name, field))
-	.append($input);
-
-	return $div;
-}
-
-formize.prototype.textareaEl = function(name, field, data) {
-	if(typeof data === 'undefined'){
-		data = '';
-	}
-	
-	var $textarea = cheerio.load('<textarea/>')('textarea')
-	.addClass('form-control')
-	.attr('id', name + '_' + field)
-	.attr('name', field)
-	.html(data.toString());
-
-	var $div = cheerio.load('<div/>')('div')
-	.addClass('form-group')
-	.append(this.labelEl(name, field))
-	.append($textarea);
-
-	return $div;
-}
-
-formize.prototype.numberEl = function(name, field, data) {
-	if(data === undefined)
-		data = '';
-	
-	var $input = cheerio.load('<input/>')('input')
-	.attr('type', 'number')
-	.addClass('form-control')
-	.attr('id', name + '_' + field)
-	.attr('name', field)
-	.val(data);
-
-	var $div = cheerio.load('<div/>')('div')
-	.addClass('form-group')
-	.append(this.labelEl(name, field))
-	.append($input);
-
-	return $div;
-}
-
-formize.prototype.DateEl = function(name, field, data) {
-	if(data === undefined)
-		data = '';
-	
-	var $input = cheerio.load('<input/>')('input')
-	.attr('type', 'datetime-local')
-	.addClass('form-control')
-	.attr('id', name + '_' + field)
-	.attr('name', field)
-	.val(data.toUTCString());
-
-	var $div = cheerio.load('<div/>')('div')
-	.addClass('form-group')
-	.append(this.labelEl(name, field))
-	.append($input);
-
-	return $div;
 }
 
 formize.prototype.submitButtonEl = function(){
@@ -113,20 +99,17 @@ formize.prototype.submitButtonEl = function(){
 formize.prototype.formEl = function(method, action) {
 	var $formHolder = cheerio.load('<form/>');
 
-	$formHolder('form').attr('method', method)
+	$formHolder('form')
+	.attr('method', method)
 	.attr('action', action);
 
 	return $formHolder;
 }
 
-formize.prototype.save = function(obj){
-	return this.model.create(obj);
-}
-
 formize.prototype.generate = function() {
 	var fields = this.fields;
 
-	var $formHolder = this.formEl('post', this.endpoint + '/edit/' + instance.id);
+	var $formHolder = this.formEl('post', this.endpoint + '/new');
 	var $form = $formHolder('form');
 	
 	for(var i in fields) {
@@ -134,24 +117,10 @@ formize.prototype.generate = function() {
 
 		this[field] = this.model.attributes[field];
 
-		switch(this[field].type.key) {
-			case ('INTEGER'):
-			this[field].dom = this.numberEl(this.name, field);
-			break;
-			case ('TEXT'):
-			this[field].dom = this.textareaEl(this.name, field);
-			break;
-			case ('DATE'):
-			this[field].dom = this.DateEl(this.name, field);
-			break;
-			default:
-			this[field].dom = this.stringEl(this.name, field);
-			break;
-		}
+		this[field].dom = new Field(this[field]);
 		$form.append(this[field].dom);
 	}
 	$form.append(this.submitButtonEl());
-	
 	return $formHolder;
 }
 
@@ -166,26 +135,11 @@ formize.prototype.generateFor = function(instance) {
 
 		this[field] = this.model.attributes[field];
 
-		switch(this[field].type.key) {
-			case ('INTEGER'):
-			this[field].dom = this.numberEl(this.name, field, instance[field]);
-			break;
-			case ('TEXT'):
-			this[field].dom = this.textareaEl(this.name, field, instance[field]);
-			break;
-			case ('DATE'):
-			this[field].dom = this.DateEl(this.name, field, instance[field]);
-			break;
-			default:
-			this[field].dom = this.stringEl(this.name, field, instance[field]);
-			break;
-		}
+		this[field].dom = new Field(this[field], instance[field]);
 		$form.append(this[field].dom);
 	}
 	$form.append(this.submitButtonEl());
-	
 	return $formHolder;
 }
 
 module.exports = formize;
-
