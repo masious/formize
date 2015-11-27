@@ -16,10 +16,6 @@ var formize = function(model) {
 	this.fields = this.fields || this.allFields;
 };
 
-formize.prototype.INTEGER 	= JSON.stringify(Sequelize.INTEGER());
-formize.prototype.TEXT 		= JSON.stringify(Sequelize.TEXT());
-formize.prototype.STRING 		= JSON.stringify(Sequelize.STRING());
-
 
 formize.prototype.labelEl = function(name, field) {
 	var $label = cheerio.load('<label/>')('label')
@@ -85,6 +81,24 @@ formize.prototype.numberEl = function(name, field, data) {
 	return $div;
 }
 
+formize.prototype.DateEl = function(name, field, data) {
+	if(data === undefined)
+		data = '';
+	
+	var $input = cheerio.load('<input/>')('input')
+	.attr('type', 'datetime-local')
+	.addClass('form-control')
+	.attr('id', name + '_' + field)
+	.attr('name', field)
+	.val(data.toUTCString());
+
+	var $div = cheerio.load('<div/>')('div')
+	.addClass('form-group')
+	.append(this.labelEl(name, field))
+	.append($input);
+
+	return $div;
+}
 
 formize.prototype.submitButtonEl = function(){
 	var $btn = cheerio.load('<input/>')('input')
@@ -112,15 +126,16 @@ formize.prototype.save = function(obj){
 formize.prototype.generate = function() {
 	var fields = this.fields;
 
-	var $form = this.formEl('post', this.endpoint + '/new');
+	var $formHolder = this.formEl('post', this.endpoint + '/edit/' + instance.id);
+	var $form = $formHolder('form');
 	
 	for(var i in fields) {
 		field = fields[i];
 
 		this[field] = this.model.attributes[field];
 
-		switch(JSON.stringify(this[field].type)) {
-			case (this.INTEGER):
+		switch(this[field].type.key) {
+			case ('INTEGER'):
 			this[field].dom = this.numberEl(this.name, field);
 			break;
 			case (this.TEXT):
@@ -133,8 +148,8 @@ formize.prototype.generate = function() {
 		$form.append(this[field].dom);
 	}
 	$form.append(this.submitButtonEl());
-
-	return $form;
+	
+	return $formHolder;
 }
 
 formize.prototype.generateFor = function(instance) {
@@ -148,12 +163,15 @@ formize.prototype.generateFor = function(instance) {
 
 		this[field] = this.model.attributes[field];
 
-		switch(JSON.stringify(this[field].type)) {
-			case (this.INTEGER):
+		switch(this[field].type.key) {
+			case ('INTEGER'):
 			this[field].dom = this.numberEl(this.name, field, instance[field]);
 			break;
-			case (this.TEXT):
+			case ('TEXT'):
 			this[field].dom = this.textareaEl(this.name, field, instance[field]);
+			break;
+			case ('DATE'):
+			this[field].dom = this.DateEl(this.name, field, instance[field]);
 			break;
 			default:
 			this[field].dom = this.stringEl(this.name, field, instance[field]);
